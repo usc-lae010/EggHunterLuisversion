@@ -1,0 +1,189 @@
+package egghunt.engine;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
+import java.util.Scanner;
+
+public class GameEngine {
+
+    private static final int MAZE_SIZE = 10;
+    private static final int NUM_EGGS = 5;
+    private static int NUM_LOCKS;
+
+    private static final int NUM_KEYS = 5;
+    private static int TIME_LIMIT;
+    private static final String[] DIRECTIONS = {"up", "down", "left", "right"};
+
+    private int playerX;
+    private int numKeys;
+    private int numEggs;
+    private int stepCount;
+    private boolean[][] maze;
+    private List<int[]> eggs;
+    private List<int[]> locks;
+    private List<int[]> keys;
+
+    // Entry point of the game. Validate the difficulty level.
+    public void startGame(int difficulty) {
+        try {
+            validateDifficulty(difficulty);
+            setupMaze();
+            setupGameVariables(difficulty);
+            playGame();
+        } catch (IllegalArgumentException e) {
+            System.out.println(e.getMessage());
+        }
+    }
+
+    // Validates the difficulty level entered.
+    // Throws an exception if the difficulty is not within the valid range of 0 to 10.
+    private void validateDifficulty(int difficulty) {
+        if (difficulty < 0 || difficulty > 10) {
+            throw new IllegalArgumentException("Invalid difficulty level. Please enter a value between 0 and 10.");
+        }
+    }
+
+    // Initializes the maze with all cells set to true, representing empty cells.
+    private void setupMaze() {
+        maze = new boolean[MAZE_SIZE][MAZE_SIZE];
+        for (int i = 0; i < MAZE_SIZE; i++) {
+            for (int j = 0; j < MAZE_SIZE; j++) {
+                maze[i][j] = true;
+            }
+        }
+    }
+
+    // Sets up game variables
+    private void setupGameVariables(int difficulty) {
+        playerX = 0;
+        numKeys = 0;
+        numEggs = 0;
+        stepCount = 0;
+
+        NUM_LOCKS = difficulty;
+        TIME_LIMIT = 100 - (difficulty * 10);
+
+        eggs = generateItems(NUM_EGGS);
+        locks = generateItems(NUM_LOCKS);
+        keys = generateItems(NUM_KEYS);
+
+        generateEntrance();
+        generateExit();
+    }
+
+    // Generate variable items randomly
+    private List<int[]> generateItems(int count) {
+        List<int[]> items = new ArrayList<>();
+        Random random = new Random();
+
+        while (items.size() < count) {
+            int x = random.nextInt(MAZE_SIZE);
+            int y = random.nextInt(MAZE_SIZE);
+            // Avoid placing variable items in the same cells and check if already occupied
+            if (!isOccupied(x, y) && !isOverlap(x, y)) {
+                items.add(new int[]{x, y});
+                maze[y][x] = false;
+            }
+        }
+
+        return items;
+    }
+
+    public boolean isOccupied(int x, int y) {
+        return !maze[y][x];
+    }
+
+    private boolean isOverlap(int x, int y) {
+        return eggs.stream().anyMatch(item -> item[0] == x && item[1] == y) ||
+                locks.stream().anyMatch(item -> item[0] == x && item[1] == y) ||
+                keys.stream().anyMatch(item -> item[0] == x && item[1] == y);
+    }
+
+    // Fixed entrance at the bottom left corner of the maze
+    private void generateEntrance() {
+        playerX = 0;
+    }
+
+    // Fixed exit at the top right corner of the maze
+    private void generateExit() {
+        playerX = MAZE_SIZE - 1;
+    }
+
+    // The main game loop. It prompts the player for commands.
+    private void playGame() {
+        Scanner scanner = new Scanner(System.in);
+        while (true) {
+            System.out.print("Enter your command (up, down, left, right, quit): ");
+            String command = scanner.nextLine();
+
+            try {
+                if (command.equalsIgnoreCase("quit")) {
+                    System.out.println("Game Over. You quit the game.");
+                    break;
+                } else if (command.equalsIgnoreCase("up") || command.equalsIgnoreCase("down") ||
+                        command.equalsIgnoreCase("left") || command.equalsIgnoreCase("right")) {
+                    movePlayer(command.toLowerCase());
+                } else {
+                    System.out.println("Invalid command. Please enter a valid direction or 'quit'.");
+                }
+            } catch (RuntimeException e) {
+                System.out.println("Error: " + e.getMessage());
+            }
+
+            if (numEggs == NUM_EGGS && playerX == MAZE_SIZE - 1) {
+                System.out.println("Congratulations! You collected all the eggs and reached the exit!");
+                int score = TIME_LIMIT - stepCount;
+                System.out.println("Your score is: " + score);
+                break;
+            } else if (TIME_LIMIT <= 0) {
+                System.out.println("Game Over. You ran out of time.");
+                break;
+            }
+        }
+    }
+
+    private void movePlayer(String direction) {
+        int newX = playerX;
+
+        switch (direction) {
+            case "up":
+                newX--;
+                break;
+            case "down":
+                newX++;
+                break;
+            case "left":
+                newX--;
+                break;
+            case "right":
+                newX++;
+                break;
+        }
+
+        // Update player position and game status
+        playerX = newX;
+        stepCount++;
+        updateGameStatus();
+    }
+
+    private void updateGameStatus() {
+        System.out.println("Current Status:");
+        System.out.println("Steps: " + stepCount);
+        System.out.println("Time Limit: " + TIME_LIMIT);
+        System.out.println("Eggs Collected: " + numEggs);
+        System.out.println("Keys: " + numKeys);
+        System.out.println();
+    }
+
+    public static void main(String[] args) {
+        GameEngine engine = new GameEngine();
+        Scanner scanner = new Scanner(System.in);
+
+        System.out.print("Enter the difficulty level (0-10): ");
+        int difficulty = scanner.nextInt();
+        scanner.nextLine(); // Consume the newline character
+
+        engine.startGame(difficulty);
+    }
+}

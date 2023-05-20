@@ -1,0 +1,342 @@
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
+
+import javafx.animation.Animation;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
+import javafx.application.Application;
+import javafx.event.ActionEvent;
+import javafx.event.EventHandler;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
+import javafx.scene.Scene;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Alert.AlertType;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.TextField;
+import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.GridPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.Circle;
+import javafx.stage.Stage;
+import javafx.util.Duration;
+
+public class EggHunt extends Application {
+
+    // The size of the maze
+    private static final int MAZE_SIZE = 10;
+
+    // The number of eggs in the maze
+    private static final int NUM_EGGS = 5;
+
+    // The number of locks in the maze
+    private static int NUM_LOCKS;
+
+    // The number of keys in the maze
+    private static final int NUM_KEYS = 5;
+
+    // The time limit for the maze
+    private static int TIME_LIMIT;
+
+    // The player's current position in the maze
+    private int playerX;
+    private int playerY;
+
+    // The player's number of keys
+    private int numKeys;
+
+    // The player's number of eggs collected
+    private int numEggs;
+
+    // The player's current step count
+    private int stepCount;
+
+    // The GridPane that displays the maze
+    private GridPane mazeGrid;
+
+    // The Label that displays the time remaining
+    private Label timeLabel;
+
+    // The Label that displays the step count
+    private Label stepLabel;
+
+    // The Label that displays the number of eggs collected
+    private Label eggLabel;
+
+    // The Label that displays the number of keys held
+    private Label keyLabel;
+
+    // The Timeline that controls the game's clock
+    private Timeline timeline;
+
+    // The List of all the eggs in the maze
+    private List<Circle> eggs = new ArrayList<>();
+
+    // The List of all the locks in the maze
+    private List<Circle> locks = new ArrayList<>();
+
+    // The List of all the keys in the maze
+    private List<Circle> keys = new ArrayList<>();
+
+    @Override
+    public void start(Stage primaryStage) {
+        BorderPane root = new BorderPane();
+
+        // Set up the top of the window
+        HBox topBox = new HBox(10);
+        topBox.setPadding(new Insets(10));
+        topBox.setAlignment(Pos.CENTER);
+
+        Label difficultyLabel = new Label("Difficulty:");
+        TextField difficultyField = new TextField("5");
+        difficultyField.setPrefWidth(50);
+        Button runButton = new Button("Run");
+        runButton.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent event) {
+                try {
+                    int difficulty = Integer.parseInt(difficultyField.getText());
+                    startGame(difficulty);
+                } catch (NumberFormatException e) {
+                    showErrorAlert("Invalid difficulty level. Please enter a valid integer.");
+                }
+            }
+        });
+        Button helpButton = new Button("Help");
+        helpButton.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent event) {
+                displayHelp();
+            }
+        });
+        Button saveButton = new Button("Save");
+        saveButton.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent event) {
+                saveGame();
+            }
+        });
+        Button loadButton = new Button("Load");
+        loadButton.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent event) {
+                loadGame();
+            }
+        });
+
+        topBox.getChildren().addAll(difficultyLabel, difficultyField, runButton, helpButton, saveButton, loadButton);
+        root.setTop(topBox);
+
+        Scene scene = new Scene(root);
+        primaryStage.setScene(scene);
+        primaryStage.setTitle("Egg Hunt Game");
+        primaryStage.show();
+    }
+
+    private void startGame(int difficulty) {
+        try {
+            validateDifficulty(difficulty);
+
+            // Set up the maze and game variables
+            setupMaze();
+            setupGameVariables(difficulty);
+
+            // Start the game timer
+            startTimer();
+
+            // Display the maze and game information
+            displayMaze();
+            displayGameInfo();
+        } catch (IllegalArgumentException e) {
+            showErrorAlert(e.getMessage());
+        }
+    }
+
+    private void validateDifficulty(int difficulty) {
+        if (difficulty < 0 || difficulty > 10) {
+            throw new IllegalArgumentException("Invalid difficulty level. Please enter a value between 0 and 10.");
+        }
+    }
+
+    private void setupMaze() {
+        // Create the maze grid
+        mazeGrid = new GridPane();
+        mazeGrid.setAlignment(Pos.CENTER);
+        mazeGrid.setHgap(5);
+        mazeGrid.setVgap(5);
+
+        // Add cells to the maze grid
+        for (int row = 0; row < MAZE_SIZE; row++) {
+            for (int col = 0; col < MAZE_SIZE; col++) {
+                StackPane cell = new StackPane();
+                cell.setPrefSize(50, 50);
+                cell.setStyle("-fx-border-color: black");
+                mazeGrid.add(cell, col, row);
+            }
+        }
+    }
+
+    private void setupGameVariables(int difficulty) {
+        // Reset player's position and variables
+        playerX = 0;
+        playerY = MAZE_SIZE - 1;
+        numKeys = 0;
+        numEggs = 0;
+        stepCount = 0;
+
+        // Calculate number of locks based on difficulty level
+        NUM_LOCKS = difficulty;
+
+        // Calculate time limit based on difficulty level
+        TIME_LIMIT = 100 - (difficulty * 10);
+    }
+
+    private void startTimer() {
+        // Create the game timeline
+        timeline = new Timeline(new KeyFrame(Duration.seconds(1), new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent event) {
+                stepCount++;
+                TIME_LIMIT--;
+                updateGameInfo();
+
+                if (TIME_LIMIT <= 0) {
+                    endGame(false);
+                }
+            }
+        }));
+
+        timeline.setCycleCount(Animation.INDEFINITE);
+        timeline.play();
+    }
+
+    private void displayMaze() {
+        // Clear the maze grid
+        mazeGrid.getChildren().clear();
+
+        // Add cells to the maze grid
+        for (int row = 0; row < MAZE_SIZE; row++) {
+            for (int col = 0; col < MAZE_SIZE; col++) {
+                StackPane cell = new StackPane();
+                cell.setPrefSize(50, 50);
+                cell.setStyle("-fx-border-color: black");
+
+                // Set player's position
+                if (row == playerY && col == playerX) {
+                    Circle playerCircle = new Circle(20, Color.BLUE);
+                    cell.getChildren().add(playerCircle);
+                }
+
+                // Set egg positions
+                for (Circle egg : eggs) {
+                    if (GridPane.getRowIndex(cell) == GridPane.getRowIndex(egg)
+                            && GridPane.getColumnIndex(cell) == GridPane.getColumnIndex(egg)) {
+                        Circle eggCircle = new Circle(20, Color.YELLOW);
+                        cell.getChildren().add(eggCircle);
+                    }
+                }
+
+                // Set key positions
+                for (Circle key : keys) {
+                    if (GridPane.getRowIndex(cell) == GridPane.getRowIndex(key)
+                            && GridPane.getColumnIndex(cell) == GridPane.getColumnIndex(key)) {
+                        Circle keyCircle = new Circle(20, Color.GREEN);
+                        cell.getChildren().add(keyCircle);
+                    }
+                }
+
+                // Set lock positions
+                for (Circle lock : locks) {
+                    if (GridPane.getRowIndex(cell) == GridPane.getRowIndex(lock)
+                            && GridPane.getColumnIndex(cell) == GridPane.getColumnIndex(lock)) {
+                        Circle lockCircle = new Circle(20, Color.RED);
+                        cell.getChildren().add(lockCircle);
+                    }
+                }
+
+                mazeGrid.add(cell, col, row);
+            }
+        }
+    }
+
+    private void displayGameInfo() {
+        VBox infoBox = new VBox(10);
+        infoBox.setPadding(new Insets(10));
+        infoBox.setAlignment(Pos.CENTER);
+
+        timeLabel = new Label("Time Limit: " + TIME_LIMIT);
+        stepLabel = new Label("Steps: " + stepCount);
+        eggLabel = new Label("Eggs Collected: " + numEggs);
+        keyLabel = new Label("Keys: " + numKeys);
+
+        infoBox.getChildren().addAll(timeLabel, stepLabel, eggLabel, keyLabel);
+        BorderPane.setAlignment(infoBox, Pos.CENTER);
+        BorderPane.setMargin(infoBox, new Insets(10));
+        root.setBottom(infoBox);
+    }
+
+    private void updateGameInfo() {
+        timeLabel.setText("Time Limit: " + TIME_LIMIT);
+        stepLabel.setText("Steps: " + stepCount);
+        eggLabel.setText("Eggs Collected: " + numEggs);
+        keyLabel.setText("Keys: " + numKeys);
+    }
+
+    private void endGame(boolean won) {
+        timeline.stop();
+
+        String message;
+        if (won) {
+            int score = TIME_LIMIT - stepCount;
+            message = "Congratulations! You collected all the eggs and reached the exit!\n" +
+                      "Your score is: " + score;
+        } else {
+            message = "Game over! You ran out of time.";
+        }
+
+        Alert alert = new Alert(AlertType.INFORMATION);
+        alert.setTitle("Game Over");
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
+
+        // Reset the game
+        startGame(Integer.parseInt(difficultyField.getText()));
+    }
+
+    private void showErrorAlert(String message) {
+        Alert alert = new Alert(AlertType.ERROR);
+        alert.setTitle("Error");
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
+    }
+
+    private void displayHelp() {
+        Alert alert = new Alert(AlertType.INFORMATION);
+        alert.setTitle("Help");
+        alert.setHeaderText(null);
+        alert.setContentText("Use the arrow keys to move the player in the maze.\n" +
+                             "Collect all the eggs and reach the exit within the time limit.\n" +
+                             "Avoid the locks unless you have a key.\n" +
+                             "Good luck!");
+        alert.showAndWait();
+    }
+
+    private void saveGame() {
+        // TODO: Implement game save functionality
+    }
+
+    private void loadGame() {
+        // TODO: Implement game load functionality
+    }
+
+    public static void main(String[] args) {
+        launch(args);
+    }
+}

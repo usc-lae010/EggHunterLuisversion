@@ -1,0 +1,35 @@
+
+import java.awt.*;
+// Define UI elements for the game
+public class Controller {
+    private static final int DEFAULT_DIFFICULTY = 5;
+    public GridPane grid;
+    private   int steps = 0;
+    private int numEggs = 0;
+    private int numKeys = 0;
+    private int timeLimit = 100;
+    private boolean hasWon = false;
+
+    private boolean hasLost = false;
+    private boolean eggVisited = false;
+    private boolean keyVisited = false;
+
+    private boolean lockVisited = false;
+    private boolean mapGenerated = false;
+    private Label lblSteps = new Label("Steps: " + steps );
+    private Label lblEggs = new Label("Eggs: " + numEggs);
+    private Label lblKeys = new Label("Keys: " + numKeys);
+    private Label lblTime = new Label("Time: " + timeLimit);
+    private Label lblMessage = new Label("");
+    private TextField txtDifficulty = new TextField(Integer.toString(DEFAULT_DIFFICULTY));
+    private Button btnRun = new Button("Run");
+    private Button btnUp = new Button("Up");
+    private Button btnDown = new Button("Down");
+    private Button btnLeft = new Button("Left");
+    private Button btnRight = new Button("Right");
+    private Button btnHelp = new Button("Help");
+    private Button btnSave = new Button("Save");
+    private Button btnLoad = new Button("Load");
+
+
+}
